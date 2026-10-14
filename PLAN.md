@@ -1,6 +1,6 @@
 # PLAN
 
-状態: 最小アプリと自動テスト・PR用CIを実装済み。C1〜C6はCodespacesのブラウザ検証で確認済み。学生の操作確認(C7)とGitHubでのCI実行(C8)は未確認。結果はPROGRESS.mdを参照。
+状態: 最小アプリとC1〜C8は確認済み。Azure Container Apps公開は追加合意済みで準備中。ローカルのlinux/amd64コンテナはビルド・テスト・起動確認済みだが、GitHub Actions、GHCR公開、Azure配置は未確認。利用者への効果仮説も未検証。詳細はPROGRESS.mdを参照。
 
 ## 入力の参照先
 
@@ -36,7 +36,7 @@
 - 色の変化（近いほど赤く）、授業ごとの色分け。
 - スクショ・LINE・写真からの自動取り込み、AI読み取り。
 - 通知・電話・壁紙、友達との共有、ログイン、複数端末での同期。
-- サーバー側のDB、公開（Azure）。
+- サーバー側のDB、複数端末同期。Azure公開は追加合意済みの作業として後述。
 
 ## 技術構成（実装済み）
 
@@ -46,12 +46,16 @@
 - サーバー: Node.js 24の標準`http`で静的ファイルを配信する小さなサーバー。依存パッケージなし。
 - テスト: Node標準の`node --test`。
 - CI: GitHub ActionsでPR時に同じテストを実行する。
-- 不要なため採用しない: React、Vite、DB、Docker。
+- コンテナ: Node.js 24の`node:24-bookworm-slim`を使ったlinux/amd64イメージ。コンテナ内ポート3000で待ち受ける。
+- 公開先: Azure Container Apps Consumption、外部Ingress。GHCRのテスト済みイメージをdigest指定で配置する。公開イメージ・Azure環境は未作成。
+- 不要なため採用しない: React、Vite、DB。
 
 ## 編集・実行場所
 
 - 編集: Codespaces。
-- 実行: Codespaces。転送ポートはPrivateのまま使う。
+- 開発実行: Codespaces。転送ポートはPrivateのまま使う。
+- コンテナ検証: CodespacesまたはGitHub Actions。
+- Azure作成・配置: チーム代表者が確認したサブスクリプションをAzure PortalとCloud Shellで使う。CodespacesにはAzure CLIがない。
 - 秘密情報・APIキーは使わない。
 
 ## 起動・確認方法
@@ -62,7 +66,11 @@
 - 起動: `npm start`（`node server.js`）。停止はターミナルでCtrl+C。
 - ポート: 3000。http://localhost:3000 をCodespacesのPortsからPrivateで開く。使用中なら別プロセスを確認し、このアプリの起動済みサーバーを重複起動しない。
 - テスト: `npm test`（`node --test`）。11件の単体・HTTP配信テスト。
-- PR用CI: `.github/workflows/test.yml`。Node.js 24で同じ`npm test`を実行。GitHub上の実行結果は未確認。
+- PR用CI: `.github/workflows/test.yml`。Node.js 24で同じ`npm test`を実行。PR #1で成功を確認。
+- コンテナ: `docker build --platform linux/amd64 -t deadline-list:local .`、`docker run --rm deadline-list:local npm test`、`docker run --rm -p 3000:3000 deadline-list:local`。終了はCtrl+C。
+- 公開CI: `.github/workflows/publish-container.yml`。既定ブランチから手動実行し、イメージを一度ビルドしてテスト・起動確認した後、同じイメージをGHCRへpushする。GitHub Actions上の実行は未確認。
+- 公開前ゲート: ワークフローのPR確認・マージ後に手動実行する。GHCRパッケージのPublic化は元に戻せないため、チーム確認後のみ行う。Azureのサブスクリプション、利用可能クレジット・予算、リージョン、作成権限を代表者が運営・メンターと確認してからリソースを作る。
+- Azure: Resource groupとContainer Apps Environment (Consumption) をAzure Portalで準備し、Cloud ShellでGHCR digestを指定して配置する。Target portは3000。Azureリソースと公開URLは未作成。
 - 手動確認: 今日・昨日・明日・7日後の課題を順不同で追加し、日付順と「今日」「期限切れ」「あと1日」「あと7日」を確認する。空の課題名・日付が追加されないこと、再読み込み後も残ること、完了した課題が再読み込み後も消えていることを確認し、C7の結果をPROGRESS.mdへ記録する。
 - 保存: 同じブラウザ・同じURLのlocalStorage。ブラウザの保存データ削除やURL変更では引き継がれない。
 - 環境変数: なし。
@@ -73,8 +81,11 @@
 2. 完了: 純粋関数を実装し、日付境界の回帰テストも含めて成功した。
 3. 完了: 画面とサーバーを作り、追加・一覧・完了・保存を接続。C1〜C6を実ブラウザで確認した。
 4. 完了: `package.json`の`start`と`test`を確認し、PR用CIを用意した。
-5. 未完了: Codespacesで学生がC1〜C6を手動確認(C7)。学生がGUIでcommit・pushし、PRのCI成功(C8)を確認してPROGRESS.mdへ記録する。
-6. 任意・未着手: 残り時間があれば、対象外から1つだけ選ぶ（チームで合意してから）。
+5. 完了: Codespacesで学生がC1〜C6を手動確認(C7)。PR #1でCI成功(C8)を確認し、PRをマージした。
+6. 進行中: Dockerfile・`.dockerignore`・手動公開Workflowを追加。Codespacesでlinux/amd64イメージをビルドし、同一イメージ内のテストとHTTP起動を確認済み。GitHub Actionsでの公開Workflow実行は未確認。
+7. 未着手: この変更をPRにし、CI・公開Workflowをチームで確認して既定ブランチへマージする。
+8. 未着手: チームでGHCRのPublic化を確認し、公開Workflowからテスト済みイメージをpushしてdigestを取得する。
+9. 未着手: サブスクリプション・費用・リージョン・権限を確認してAzureへ配置し、公開URLでC1〜C6の主要操作を確認。URL・digest・結果・未確認と終了方法を記録する。
 
 ## スケジュールの前提（資料より）
 
