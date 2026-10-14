@@ -1,0 +1,51 @@
+name: Publish tested container
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build linux/amd64 image
+        env:
+          IMAGE: deadline-list:${{ github.sha }}
+        run: docker build --platform linux/amd64 --tag "$IMAGE" .
+
+      - name: Test and smoke-test built image
+        env:
+          IMAGE: deadline-list:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker run --rm "$IMAGE" npm test
+          docker run --detach --name deadline-list-smoke --publish 127.0.0.1:8080:3000 "$IMAGE"
+          trap 'docker rm --force deadline-list-smoke >/dev/null 2>&1 || true' EXIT
+          curl --fail --silent --show-error --retry 20 --retry-connrefused --retry-delay 1 --retry-max-time 30 http://127.0.0.1:8080/ > /tmp/deadline-list-index.html
+          grep -q '<title>課題の締切</title>' /tmp/deadline-list-index.html
+          curl --fail --silent --show-error http://127.0.0.1:8080/app.js | grep -q 'localStorage'
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push tested image and record digest
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker tag "deadline-list:${GITHUB_SHA}" "$IMAGE"
+          docker push "$IMAGE" 2>&1 | tee /tmp/deadline-list-push.log
+          DIGEST="$(sed -nE 's/.*digest: (sha256:[a-f0-9]+).*/\1/p' /tmp/deadline-list-push.log | tail -n 1)"
+          test -n "$DIGEST"
+          printf 'Commit: `%s`\n\nTests and container smoke test: **passed**\n\nImage tag: `%s`\n\nDigest reference: `ghcr.io/%s@%s`\n' "$GITHUB_SHA" "$IMAGE" "${GITHUB_REPOSITORY,,}" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"

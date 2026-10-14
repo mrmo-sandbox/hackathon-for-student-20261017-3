@@ -11,7 +11,8 @@
 - 実装前の`npm test`: モジュール未作成によるERR_MODULE_NOT_FOUNDを確認。
 - 実装後の`npm test`: 7件成功。HTTP配信テスト追加後は8件成功。
 - 最終確認: リポジトリを明示した`npm --prefix /workspaces/hackathon-for-student-20261017-3 test`で11件成功、失敗・Skippedなし。C2〜C4、うるう年・年越し・不正日付・ローカル日付、配信のContent-Type・404・405・HEADを確認。CIも同じ`npm test`を使用する。
-- PR確認: [PR #1](https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/pull/1)（base `main`、head `feat/deadline-list`）を作成。GitHub Actionsの`Tests`が成功。実行結果: https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/actions/runs/38543188602/job/115782711177
+- PR確認: [PR #1](https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/pull/1)（base `main`、head `feat/deadline-list`）を作成・マージ。GitHub Actionsの`Tests`が成功。実行結果: https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/actions/runs/38543320926/job/115783153973
+- C7手動確認（2026-10-14 / Codespaces）: 学生がPLAN.mdのC1〜C6を操作し、想定通りと報告。個別の入力値・結果の詳細は未記録。
 - `npm start`: ポート3000で起動成功。ChromiumからHTTPで画面・モジュールを読み込み、画面のJavaScriptエラーなし。
 - Playwright/Chromiumの実画面操作: 幅1280pxと375px、Asia/Tokyo、今日を2026-10-13に固定してC1〜C6を確認。順不同で4課題を追加し、期限切れ→今日→あと1日→あと7日の順で表示。再読み込み後4件保持、完了後は再読み込みしても3件。
 - 追加検証: 空の課題名・締切日では理由を表示して0件のまま。HTML風の課題名は文字として表示。長い課題名で横はみ出し・ボタンとの重なりなし。保存失敗を模擬し、エラー表示・入力保持・一覧の件数維持を確認。
@@ -29,13 +30,28 @@
 | C4 入力検査 | 確認済み | 単体テストと実画面のエラー確認 |
 | C5 完了 | 確認済み | 完了後・再読み込み後に一覧から削除 |
 | C6 保存 | 確認済み | 再読み込み後に4件保持 |
-| C7 学生の主要操作 | 未確認 | 学生の操作結果は未取得 |
+| C7 学生の主要操作 | 確認済み | 学生がC1〜C6を操作し、想定通りと報告（個別の入力値・結果の詳細は未記録） |
 | C8 PRのCI実行 | 確認済み | [PR #1](https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/pull/1)の`Tests`成功（2026-10-14） |
 
-既知の機能未達はなし。ただしC7・C8が未確認のため、全条件達成とは扱わない。締切に気づきやすくなるという利用者への効果も未検証。
+既知の機能未達はなく、完成条件C1〜C8は確認済み。締切に気づきやすくなるという利用者への効果は未検証。
 
 ## 次の作業
 
-1. CodespacesのPortsで3000をPrivateのままブラウザで開き、PLAN.mdの手動確認を学生が実施する。結果・問題があればこの記録へ追記する。
-2. チームでPR #1の差分を確認し、学生のC7操作結果を追記する。レビュー後にマージ判断する。
-3. C7で問題が見つかった場合は同じブランチで修正し、テストとPRのCIを再確認する。対象外の追加は合意を得てから。
+1. READMEの手順8に沿って発表し、完成条件の確認結果と未検証の利用者効果を区別して説明する。
+2. 発表や利用者から問題・改善要望が出た場合は、チームで合意して最新の`main`から新しい作業ブランチを作り、PLAN.mdと実装・確認を更新する。
+
+## 2026-10-14 / Azure公開準備
+
+- Azure Container Apps公開をユーザーが選択。マージ済みmainから`feat/azure-container-apps`を作成し、C7記録と公開準備を同じ作業ブランチで更新中。
+- `Dockerfile`、`.dockerignore`、`.github/workflows/publish-container.yml`を追加。ドキュメントと企画PDFはコンテナのbuild contextから除外。
+- Codespacesで`docker build --platform linux/amd64 -t deadline-list:local .`成功。`docker run --rm deadline-list:local npm test`は11件成功。
+- 同じイメージを起動し、`127.0.0.1:8080`へのHTTP応答200と`/app.js`の配信を確認。検証コンテナは停止済み。
+- 未確認: 公開WorkflowのGitHub Actions実行、GHCRへのpush・Public化、Azureリソース・公開URL。CodespacesにはAzure CLIがないため、Azure側操作はガイドどおりCloud Shellを使う。費用・クレジット・リージョン・権限も未確認。
+
+### Azure公開準備後の作業
+
+1. [PR #2](https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/pull/2)をチームで確認し、マージする。`Tests`・CodeQL解析・CodeQLアラート確認はすべて成功。
+2. GHCRのPublic化がチーム合意された場合のみ、既定ブランチの手動Workflowを実行し、digestを記録する。Public化は元に戻せない。
+3. 代表者が利用枠・費用・リージョン・権限を確認した後、Azure Portal/Cloud ShellでContainer Appsを作り、URL上で主要操作を確認する。
+
+- PR #2の最新確認: `Tests`成功 https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/actions/runs/38584952009/job/115924321649 ; CodeQL解析成功 https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/actions/runs/38584948041/job/115924315134 ; CodeQLアラートなし https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/runs/115924641891
