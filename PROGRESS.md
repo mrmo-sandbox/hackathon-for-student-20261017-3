@@ -50,6 +50,9 @@
 
 ### Azure公開準備後の作業
 
-1. Dockerfile・公開WorkflowをPRにし、CI成功とチーム確認後にマージする。
+1. [PR #2](https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/pull/2)をチームで確認し、マージする。`Tests`は成功。CodeQLは状態不明のため成功扱いにしていない。
 2. GHCRのPublic化がチーム合意された場合のみ、既定ブランチの手動Workflowを実行し、digestを記録する。Public化は元に戻せない。
 3. 代表者が利用枠・費用・リージョン・権限を確認した後、Azure Portal/Cloud ShellでContainer Appsを作り、URL上で主要操作を確認する。
+
+- PR #2の`Tests`成功を確認: https://github.com/mrmo-sandbox/hackathon-for-student-20261017-3/actions/runs/38584733691/job/115923564240
+- CodeQLは状態不明。Azure公開準備のDoDに含むテストではないため合格とは扱わず、PR上で確認継続。
